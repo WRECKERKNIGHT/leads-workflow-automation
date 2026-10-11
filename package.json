@@ -1,0 +1,56 @@
+{
+  "name": "leads-workflow-automation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agency OS — an autonomous lead-extraction and outreach pipeline for local businesses (School, Restaurant, Cafe, Gym, Salon) with a no-slop black/white dashboard, single-active-category engine, per-category wired workflow, organized leads export, live bot profiles, and WhatsApp-first handoff.",
+  "keywords": [
+    "leads",
+    "lead-generation",
+    "outreach",
+    "workflow-automation",
+    "local-business",
+    "whatsapp",
+    "overpass",
+    "openstreetmap",
+    "nextjs",
+    "agency"
+  ],
+  "author": "WRECKERKNIGHT",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WRECKERKNIGHT/leads-workflow-automation.git"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "scaffold-db": "node scripts/scaffold-db.mjs",
+    "run-mission": "node -e \"require('ts-node').register({ transpileOnly: true, project: 'tsconfig.json' }); require('./scripts/run-mission.ts');\""
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "framer-motion": "^11.5.4",
+    "imapflow": "^2.0.5",
+    "mailparser": "^3.9.28",
+    "next": "^15.0.3",
+    "nodemailer": "^10.0.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^22.10.1",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^15.0.3",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
