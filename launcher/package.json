@@ -1,0 +1,13 @@
+{
+  "name": "wreckerai-launcher",
+  "version": "1.0.0",
+  "description": "Premium desktop launcher for WreckerAI Agency OS",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
