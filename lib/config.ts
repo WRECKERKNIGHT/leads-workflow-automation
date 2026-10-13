@@ -23,8 +23,6 @@ export const config = {
   autonomous: process.env.AUTONOMOUS_MODE !== "false",
   autoMissionIntervalMs: Number(process.env.AUTO_MISSION_INTERVAL_MS ?? "90000"),
   pipelineIntervalMs: Number(process.env.PIPELINE_INTERVAL_MS ?? "8000"),
-  simulateReplies: process.env.SIMULATE_REPLIES === "true",
-  replyDelayMs: Number(process.env.REPLY_DELAY_MS ?? "30000"),
 
   // All-India discovery: states to cycle through. Leave empty for nationwide bbox sweep.
   autoStates: (process.env.AUTO_STATES ?? "").split(",").map((s) => s.trim()).filter(Boolean),
