@@ -34,11 +34,12 @@ Every stage is visible on the per-category dashboard and in the bot fleet status
 - **Aesthetic category selector** on the home page — pick one category, start it anywhere.
 - **Single active category** — the autonomous engine only ever runs the one category you
   chose at a time; switch categories and the engine switches with you.
-- **Per-category dashboard** at `/c/[slug]` with:
-  - overview stat grid (total leads, have phone, have website, sent, done),
-  - the **wired workflow** — an animated SVG map of all 8 pipeline stages for that category,
-  - a searchable **lead table** with stage filtering, copy/chat WhatsApp buttons,
-  - **bot profile cards** with live working statuses.
+- **Per-category workspace** — every category has its own subpages so nothing is crammed onto
+  one screen:
+  - `/c/[slug]` — **Overview**: key stat grid, pipeline-at-a-glance, bot floor, recent leads,
+  - `/c/[slug]/leads` — full searchable **lead table** with stage filtering, copy/chat buttons,
+  - `/c/[slug]/workflow` — the **wired workflow**, an animated SVG of all 8 pipeline stages,
+  - `/c/[slug]/bots` — the full **bot profile cards** for that category.
 - **Organized leads export** — clean CSV or JSON per category via
   `/api/categories/[slug]/export` with every field: name, all phones, WhatsApp number,
   website, email, address, city, coordinates, stage, timestamps.
@@ -59,29 +60,38 @@ Every stage is visible on the per-category dashboard and in the bot fleet status
 | Message Writer | `message` | LLM generates a category-specific outreach draft. |
 | Verifier Agent | `verify` | Domain + SMTP mailbox checks; auto-approves or blocks. |
 | Sender Agent | `send` | Delivers via SMTP; marks leads ready for WhatsApp handoff. |
-| Reply agent | `reply` | Picks up inbound/fabricated replies and books the call. |
+| Reply agent | `reply` | Reads real inbound mail over IMAP and classifies it (interested / not interested / needs info). |
 
 ## Screenshots
 
 | | |
 | --- | --- |
 | Category selector (home) | ![Home](docs/screenshots/01-home-selector.png) |
-| Category dashboard + wired workflow | ![School dashboard](docs/screenshots/02-category-school.png) |
+| Category workspace — overview | ![School overview](docs/screenshots/02-category-school.png) |
 | Bot fleet profiles | ![Bots](docs/screenshots/03-bots.png) |
 | Office / workspace | ![Workspace](docs/screenshots/04-workspace.png) |
+| Category workspace — leads | ![School leads](docs/screenshots/05-category-leads.png) |
+| Category workspace — workflow | ![School workflow](docs/screenshots/06-category-workflow.png) |
 
 ## Install & run
 
-Requirements: **Node 20+**, npm.
+Requirements: **Node 22.5+** (uses Node's built-in `node:sqlite`; tested on Node 24), npm.
 
 ```bash
 git clone https://github.com/WRECKERKNIGHT/leads-workflow-automation.git
 cd leads-workflow-automation
 npm install
-cp .env.example .env.local   # then fill in at least OPENROUTER_API_KEY and SMTP_*
+# Windows:
+copy .env.example .env.local
+# macOS / Linux:
+#   cp .env.example .env.local
+#   then fill in at least OPENROUTER_API_KEY and SMTP_*
 npm run scaffold-db          # creates the SQLite database file
 npm run dev                  # http://localhost:3000
 ```
+
+> Step-by-step setup on a fresh PC: [docs/SETUP.md](docs/SETUP.md).
+> Real WhatsApp sending options (free wa.me links → Cloud API / Business app): [docs/WHATSAPP.md](docs/WHATSAPP.md).
 
 Production build:
 
