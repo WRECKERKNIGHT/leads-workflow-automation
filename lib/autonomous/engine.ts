@@ -1,17 +1,16 @@
 import { config } from "@/lib/config";
 import { getDb, nowIso } from "@/lib/db";
 import {
-  getInstitution,
   getAgentRun,
   pushOfficeEvent,
   logAgent,
   listInboxThreads,
-  updateInstitution,
   quarantineInvalidContacts,
+  quarantineInvalidPhones,
 } from "@/lib/db/repo";
 import { processQueues } from "@/agents/pipeline";
 import { runDiscovery, INDIA_STATES } from "@/agents/discovery";
-import { sendOutreachEmail, receiveInboundReply } from "@/agents/sender";
+import { sendOutreachEmail } from "@/agents/sender";
 import { runMailSync } from "@/agents/mail";
 import { classifyReply } from "@/agents/replies";
 import { runVerifierTask } from "@/agents/verifier";
@@ -19,12 +18,12 @@ import { resolveActiveCategory } from "@/lib/config";
 import type { AgentId } from "@/agents/types";
 
 /**
- * Autonomous engine — keeps WreckerAI running on its own:
- *  1. Drives the EduSuite pipeline (discovery -> ... -> message -> approval).
+ * Autonomous engine — keeps the agency running on its own:
+ *  1. Drives the pipeline (discovery -> ... -> message -> approval).
  *  2. Rotates all-India discovery missions across states/categories.
  *  3. Auto-approves + sends outreach via real SMTP (approval-gated by env).
- *  4. Simulates inbound replies (when enabled) so the reply flow can be seen
- *     end-to-end; classifies real + simulated replies with the LLM.
+ *  4. Reads REAL inbound replies over IMAP and classifies them. Replies are
+ *     never fabricated — if nobody writes back, the reply stage stays empty.
  */
 
 let started = false;
@@ -51,6 +50,7 @@ export function startAutonomousEngine() {
   getDb(); // ensure schema
   ensureAgentsOnline();
   quarantineInvalidContacts();
+  quarantineInvalidPhones();
 
   logAgent("lead_finder", "WreckerAI Engine ONLINE — all-India self-running agency", {});
   pushOfficeEvent("mission", "🚀 WreckerAI engine ONLINE — lead automation running", { agentId: "lead_finder", icon: "🚀" });
@@ -112,10 +112,10 @@ export async function runPipelineCycle(): Promise<{ progressed: number; sent: nu
     // 2) Approved drafts go out over SMTP.
     const sent = await autoSendOutreach();
 
-    const replied = config.simulateReplies ? await simulateReplies() : 0;
+    // 3) Classify whatever real replies the inbox monitor has pulled in.
     await processUnclassifiedReplies();
 
-    return { progressed, sent, replied, verified: verdict.approved, blocked: verdict.blocked };
+    return { progressed, sent, replied: 0, verified: verdict.approved, blocked: verdict.blocked };
   } finally {
     cycleRunning = false;
   }
@@ -148,69 +148,14 @@ function ensureSmptWaitersApproved() {
 }
 
 /**
- * Simulate a realistic inbound reply for sent leads after REPLY_DELAY_MS,
- * routed through the real Reply Manager so classification runs for real.
+ * Classify real replies the inbox monitor has synced. If nobody wrote back,
+ * there is nothing to classify and the reply stage stays honestly empty.
  */
-async function simulateReplies(): Promise<number> {
-  const db = getDb();
-  const delayMs = config.replyDelayMs;
-  const cutoff = new Date(Date.now() - delayMs).toISOString().replace("T", " ").slice(0, 19);
-
-  const rows = db
-    .prepare(
-      `SELECT i.id, i.name
-       FROM institutions i
-       JOIN outreach_queue o ON o.institution_id = i.id AND o.status = 'sent'
-       WHERE (o.sent_at IS NOT NULL AND o.sent_at < ?)
-         AND NOT EXISTS (SELECT 1 FROM inbox_threads t WHERE t.institution_id = i.id)
-       GROUP BY i.id ORDER BY i.id`
-    )
-    .all(cutoff) as { id: number; name: string }[];
-
-  let replied = 0;
-  for (const row of rows) {
-    if (getAgentRun("reply_manager")?.status === "working") break;
-    const inst = getInstitution(Number(row.id));
-    if (!inst) continue;
-    const kind = pickReplyKind();
-    const body = replyBody(kind, inst.name ?? row.name);
-    const fromAddr = inst.admissions_email || inst.email || `admissions@${slug(inst.name ?? "school")}.in`;
-    const threadId = await receiveInboundReply(Number(row.id), `Re: EduSuite Pro demo (${inst.name})`, fromAddr, body);
-    setTimeout(() => classifyReply(threadId).catch(() => {}), 1500);
-    replied++;
-    if (replied >= 4) break;
-  }
-  return replied;
-}
-
 async function processUnclassifiedReplies() {
   const threads = listInboxThreads(150).filter((t) => t.classification === null && (t.kind ?? "reply") === "reply");
   for (const t of threads.slice(0, 3)) {
     if (getAgentRun("reply_manager")?.status === "working") break;
     await classifyReply(t.id);
-  }
-}
-
-function slug(s: string): string {
-  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 12) || "school";
-}
-
-function pickReplyKind(): "interested" | "curious" | "not_interested" {
-  if (config.mockMode) return "interested";
-  const r = Math.random();
-  if (r < 0.5) return "interested";
-  if (r < 0.8) return "curious";
-  return "not_interested";
-}
-
-function replyBody(kind: string, name: string): string {
-  switch (kind) {
-    case "interested":
-      return `Hi, thanks for reaching out. ${name} is actually interested — could you share more detail and a time for a quick call? We'd like to understand the pricing options too.`;
-    case "curious":
-      return `Hello, we received your note. Could you tell us more about how EduSuite Pro works and what the ${"Basic/Standard"} plans cost?`;
-    default:
-      return `Thank you, but we're not looking for a new system right now. Please take us off your list.`;
   }
 }
 
