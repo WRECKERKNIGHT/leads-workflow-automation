@@ -36,6 +36,7 @@ export interface WorkflowPayload {
   verifierCache: { mailboxes: number; domains: number; catchAllDomains: number };
   pricing: { setupFee: number; annualMaintenance: number; summary: string };
   autoApprove: boolean;
+  engine: { autonomous: boolean; activeAgents: number };
 }
 
 let cached: WorkflowPayload | null = null;
