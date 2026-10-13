@@ -236,9 +236,25 @@ export default function WorkflowDashboard() {
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-edge bg-gradient-to-br from-slate-900 via-panel to-slate-950 p-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/30">
-              <span className="anim-pulse h-2 w-2 rounded-full bg-emerald-400" />
-              WORKFLOW LIVE
+            <span
+              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold ring-1 ${
+                !data.engine.autonomous
+                  ? "bg-slate-800/60 text-slate-400 ring-slate-700"
+                  : data.engine.activeAgents > 0
+                    ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30"
+                    : "bg-amber-500/10 text-amber-300 ring-amber-500/25"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  !data.engine.autonomous ? "bg-slate-500" : data.engine.activeAgents > 0 ? "anim-pulse bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              {!data.engine.autonomous
+                ? "ENGINE OFF"
+                : data.engine.activeAgents > 0
+                  ? `WORKFLOW LIVE · ${data.engine.activeAgents} BOT${data.engine.activeAgents > 1 ? "S" : ""} RUNNING`
+                  : "ENGINE IDLE"}
             </span>
             <span
               className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold ring-1 ${
