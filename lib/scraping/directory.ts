@@ -3,6 +3,7 @@ import { webSearch } from "./search";
 import { complete } from "@/lib/llm/openrouter";
 import { config } from "@/lib/config";
 import { normalizeEmail, isJunkEmail, isJunkDomain, registrableDomain, siteBelongsToSchool, wordTokens, distinctiveTokens } from "@/lib/validation";
+import { cleanPhone as sanitizePhone } from "@/lib/phone";
 import { lookupGooglePlaces } from "@/lib/scraping/google-places";
 import type { ContactSource } from "@/agents/types";
 
@@ -35,9 +36,8 @@ const PHONE_RE = /(?:\+?91[\s-]?)?(?:[6-9]\d{4}[\s.-]?\d{5})/g;
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 function cleanPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digits = String(raw).replace(/\D/g, "").slice(-10);
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+  const local = sanitizePhone(raw);
+  return local && /^[6-9]\d{9}$/.test(local) ? local : null;
 }
 
 function cleanPhoneList(html: string): string[] {
