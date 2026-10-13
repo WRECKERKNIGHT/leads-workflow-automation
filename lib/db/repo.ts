@@ -1,5 +1,6 @@
 import { getDb, nowIso, runInTransaction } from "./index";
-import { isSendableEmail, isForeignLead, siteBelongsToSchool, registrableDomain } from "@/lib/validation";
+import { isSendableEmail, isForeignLead, siteBelongsToSchool, registrableDomain, isJunkDomain } from "@/lib/validation";
+import { cleanPhone, isWhatsAppCapable } from "@/lib/phone";
 import { isWhatsAppNumber, waLink } from "@/lib/whatsapp";
 import type { Institution, AgentStatus, AgentId, Stage, FolderStatus, ReplyClassification } from "@/agents/types";
 import type { SQLInputValue } from "node:sqlite";
@@ -188,6 +189,67 @@ export function quarantineInvalidContacts() {
       { level: "warn" }
     );
   }
+}
+
+/**
+ * Sweep the database for fake phone numbers and junk websites. Runs at boot and
+ * is idempotent. OpenStreetMap placeholder numbers (9999999776, 9999999999,
+ * 916666666666…) were attached to thousands of leads; they are not real
+ * contacts, so they are cleared and the WhatsApp flag recomputed from the real
+ * number. Junk/consumer domains that were never proven to belong to the
+ * business are cleared from every stage, including "done".
+ */
+export function quarantineInvalidPhones(): { clearedPhones: number; fixedPhones: number; clearedSites: number } {
+  const db = getDb();
+
+  const phoneRows = db
+    .prepare("SELECT id, phone, whatsapp_available FROM institutions WHERE phone IS NOT NULL AND phone <> ''")
+    .all() as { id: number; phone: string; whatsapp_available: number | null }[];
+
+  const clearIds: number[] = [];
+  const fix: { id: number; phone: string; wa: number }[] = [];
+  for (const r of phoneRows) {
+    const cleaned = cleanPhone(r.phone);
+    if (!cleaned) {
+      clearIds.push(r.id);
+      continue;
+    }
+    const wa = isWhatsAppCapable(cleaned) ? 1 : 0;
+    if (cleaned !== r.phone || wa !== (r.whatsapp_available ?? 0)) {
+      fix.push({ id: r.id, phone: cleaned, wa });
+    }
+  }
+
+  const siteRows = db
+    .prepare("SELECT id, website FROM institutions WHERE website IS NOT NULL AND website <> ''")
+    .all() as { id: number; website: string }[];
+  const badSites = siteRows.filter((r) => isJunkDomain(registrableDomain(r.website)));
+
+  runInTransaction(() => {
+    for (const id of clearIds) {
+      db.prepare("UPDATE institutions SET phone = NULL, whatsapp_available = 0, updated_at = ? WHERE id = ?").run(nowIso(), id);
+    }
+    for (const f of fix) {
+      db.prepare("UPDATE institutions SET phone = ?, whatsapp_available = ?, updated_at = ? WHERE id = ?").run(f.phone, f.wa, nowIso(), f.id);
+    }
+    for (const r of badSites) {
+      db.prepare("UPDATE institutions SET website = NULL, site_verified = 0, site_match_reason = ?, updated_at = ? WHERE id = ?").run(
+        "cleared at boot — consumer/platform domain, never provable as this business's site",
+        nowIso(),
+        r.id
+      );
+    }
+  });
+
+  if (clearIds.length || fix.length || badSites.length) {
+    logAgent(
+      "lead_organizer",
+      `Boot phone sweep: ${clearIds.length} placeholder number(s) cleared, ${fix.length} normalised, ${badSites.length} junk website(s) cleared`,
+      { level: "warn" }
+    );
+  }
+
+  return { clearedPhones: clearIds.length, fixedPhones: fix.length, clearedSites: badSites.length };
 }
 
 export function countInstitutionsByStage() {
