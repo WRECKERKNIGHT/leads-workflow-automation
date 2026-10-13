@@ -3,6 +3,7 @@ import { runAgentTask } from "@/lib/agents/runner";
 import { createInstitution, createMission, pushOfficeEvent, logAgent, institutionExists } from "@/lib/db/repo";
 import { CATEGORY_CONFIG } from "@/agents/types";
 import { isForeignLead } from "@/lib/validation";
+import { cleanPhone, isWhatsAppCapable } from "@/lib/phone";
 import type { InstitutionCategory } from "@/agents/types";
 
 export interface DiscoveryFilters {
@@ -149,7 +150,7 @@ export async function runDiscovery(params: {
         const country = t["addr:country"];
         if (country && FOREIGN_COUNTRY.test(country)) continue;
         if (isForeignLead(el.lat, el.lon, name)) continue;
-        if (filters.requirePhone && !(t.phone || t["contact:phone"])) continue;
+        if (filters.requirePhone && !cleanPhone(t.phone || t["contact:phone"])) continue;
         if (filters.requireWebsite && !(t.website || t["contact:website"])) continue;
         if (filters.keyword && !name.toLowerCase().includes(filters.keyword.toLowerCase())) continue;
         const key = name.toLowerCase();
@@ -171,6 +172,9 @@ export async function runDiscovery(params: {
         const name = (t["name:en"] || t.int_name || t.name)?.trim();
         if (!name) continue;
         if (institutionExists(name, state)) continue; // dedupe against DB too
+        // Placeholder switchboard numbers (9999999776 et al.) are dropped at the
+        // door so they never reach the dashboard or a wa.me link.
+        const phone = cleanPhone(t.phone || t["contact:phone"] || t["phone:mobile"]);
         createInstitution({
           mission_id: mission.id,
           name,
@@ -182,8 +186,8 @@ export async function runDiscovery(params: {
           address: [t["addr:housenumber"], t["addr:street"], t["addr:city"]].filter(Boolean).join(", ") || null,
           city: t["addr:city"] || t["addr:town"] || t["addr:suburb"] || null,
           website: normalizeWebsite(t.website || t["contact:website"]),
-          phone: t.phone || t["contact:phone"] || t["phone:mobile"] || null,
-          whatsapp_available: t.phone || t["contact:phone"] ? 1 : 0,
+          phone,
+          whatsapp_available: isWhatsAppCapable(phone) ? 1 : 0,
           email: t.email || t["contact:email"] || t["website:email"] || null,
           maps_link: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, ${state}`)}`,
           rating: t.rating ? parseFloat(t.rating) : null,
@@ -212,7 +216,7 @@ export async function runDiscovery(params: {
 function scoreSort(a: OverpassElement, b: OverpassElement): number {
   const sc = (e: OverpassElement) => {
     const t = e.tags ?? {};
-    return (t.phone || t["contact:phone"] ? 4 : 0) + (t.website || t["contact:website"] ? 2 : 0) + (t["contact:email"] || t.email ? 1 : 0);
+    return (cleanPhone(t.phone || t["contact:phone"]) ? 4 : 0) + (t.website || t["contact:website"] ? 2 : 0) + (t["contact:email"] || t.email ? 1 : 0);
   };
   return sc(b) - sc(a);
 }
