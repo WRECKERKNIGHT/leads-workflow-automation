@@ -109,7 +109,7 @@ npm start
 | `GOOGLE_PLACES_API_KEY` | — | Optional. The only source that returns a business's own `website`. |
 | `DISCOVERY_CATEGORIES` | all 5 | Comma-separated categories the pipeline may target. |
 | `AUTONOMOUS_MODE` | `true` | Master switch for the background engine. |
-| `AUTO_CITIES` | 10 Indian cities | Cities the launcher cycles through. |
+| `AUTO_STATES` | empty (all-India) | Comma-separated states the launcher cycles through. |
 | `AUTO_APPROVE` | `true` | Auto-approve verified drafts; set `false` for manual approval. |
 | `MAIL_*` / `SMTP_*` | Gmail defaults | IMAP inbox monitoring + real email sending with a Gmail app password. |
 
@@ -117,9 +117,9 @@ npm start
 
 1. Open `/` — the aesthetic category selector. Pick a category and hit **Start**.
    The engine now runs *only* that category.
-2. Open `/c/<slug>` (e.g. `/c/school`) — see the overview, the animated wired workflow,
-   the bot cards, and the live lead table for that category.
-3. In the lead table, filter by stage, then use **Chat** (`wa.me`) or **Copy** to hand the
+2. Open `/c/<slug>` (e.g. `/c/school`) — the category workspace. Use the tabs to move between
+   **Overview**, **Leads**, **Workflow** and **Bots** subpages.
+3. On the leads page, filter by stage, then use **Chat** (`wa.me`) or **Copy** to hand the
    lead off to WhatsApp. Use **Export CSV / JSON** for the full organized list.
 4. `/bots` shows the whole bot fleet with live status and task logs.
 5. `/office` and `/workflow` still hold the classic mission board and pipeline view.
