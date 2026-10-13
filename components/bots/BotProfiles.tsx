@@ -40,7 +40,7 @@ function timeStr(iso?: string | null): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export default function BotProfiles() {
+export default function BotProfiles({ embedded = false }: { embedded?: boolean }) {
   const [bots, setBots] = useState<BotDTO[] | null>(null);
 
   useEffect(() => {
@@ -63,8 +63,10 @@ export default function BotProfiles() {
 
   const active = bots?.filter((b) => b.run && (b.run.status === "working" || b.run.status === "thinking")).length ?? 0;
 
+  const Wrapper = embedded ? "section" : "main";
+
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-8">
+    <Wrapper className="mx-auto max-w-[1600px] px-4 py-6 md:px-8">
       <header className="border border-edge bg-panel p-6">
         <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-faint">Workforce register</p>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
@@ -81,6 +83,7 @@ export default function BotProfiles() {
       </header>
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {embedded && bots && <p className="col-span-full font-mono text-[10px] uppercase tracking-widest text-faint">full profiles below</p>}
         {!bots && [0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-64 animate-pulse rounded-2xl border border-edge bg-panel" />)}
         {bots?.map((b) => {
           const meta = STATUS_META[b.run?.status ?? "waiting"] ?? STATUS_META.waiting;
@@ -147,6 +150,6 @@ export default function BotProfiles() {
           );
         })}
       </div>
-    </main>
+    </Wrapper>
   );
 }
