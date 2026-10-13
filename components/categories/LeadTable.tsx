@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { waLink } from "@/lib/whatsapp";
 
 interface Lead {
@@ -32,7 +33,17 @@ const STAGE_LABEL: Record<string, string> = {
   done: "Done",
 };
 
-export default function LeadTable({ slug, leads, total }: { slug: string; leads: Lead[]; total: number }) {
+export default function LeadTable({
+  slug,
+  leads,
+  total,
+  compact = false,
+}: {
+  slug: string;
+  leads: Lead[];
+  total: number;
+  compact?: boolean;
+}) {
   const [q, setQ] = useState("");
   const [stage, setStage] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
@@ -85,45 +96,60 @@ export default function LeadTable({ slug, leads, total }: { slug: string; leads:
     <div className="rounded-2xl border border-edge bg-panel">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge p-4">
         <div>
-          <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-white">Leads · {total.toLocaleString("en-IN")}</h3>
-          <p className="mt-0.5 text-[11px] text-faint">Search the floor, then export the whole set for manual approaching.</p>
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-white">
+            {compact ? "Recent leads" : `Leads · ${total.toLocaleString("en-IN")}`}
+          </h3>
+          <p className="mt-0.5 text-[11px] text-faint">
+            {compact ? `Showing latest ${leads.length} of ${total.toLocaleString("en-IN")}.` : "Search the floor, then export the whole set for manual approaching."}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={`/api/categories/${slug}/export?format=csv`}
+        {compact ? (
+          <Link
+            href={`/c/${slug}/leads`}
             className="cursor-pointer border border-white/30 px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white hover:border-white hover:bg-white hover:text-black"
           >
-            ⌄ export csv
-          </a>
-          <a
-            href={`/api/categories/${slug}/export?format=json`}
-            className="cursor-pointer border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-white/60 hover:border-white hover:text-white"
-          >
-            json
-          </a>
-        </div>
+            view all {total.toLocaleString("en-IN")} →
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/categories/${slug}/export?format=csv`}
+              className="cursor-pointer border border-white/30 px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white hover:border-white hover:bg-white hover:text-black"
+            >
+              ⌄ export csv
+            </a>
+            <a
+              href={`/api/categories/${slug}/export?format=json`}
+              className="cursor-pointer border border-white/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-white/60 hover:border-white hover:text-white"
+            >
+              json
+            </a>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-edge px-4 py-3">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name, city, state, phone…"
-          className="min-w-[220px] flex-1 rounded border border-edge bg-black px-3 py-1.5 text-xs text-white outline-none placeholder:text-faint focus:border-white/60"
-        />
-        <select
-          value={stage}
-          onChange={(e) => setStage(e.target.value)}
-          className="cursor-pointer rounded border border-edge bg-black px-3 py-1.5 text-xs text-white outline-none focus:border-white/60"
-        >
-          <option value="">All stages</option>
-          {Object.entries(STAGE_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-edge px-4 py-3">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name, city, state, phone…"
+            className="min-w-[220px] flex-1 rounded border border-edge bg-black px-3 py-1.5 text-xs text-white outline-none placeholder:text-faint focus:border-white/60"
+          />
+          <select
+            value={stage}
+            onChange={(e) => setStage(e.target.value)}
+            className="cursor-pointer rounded border border-edge bg-black px-3 py-1.5 text-xs text-white outline-none focus:border-white/60"
+          >
+            <option value="">All stages</option>
+            {Object.entries(STAGE_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[960px] text-left text-xs">
