@@ -3,6 +3,7 @@ import { getInstitution, updateInstitution, pushOfficeEvent, saveAgentOutput, lo
 import { fetchPage, internalLinks } from "@/lib/scraping/web";
 import { lookupGoogleMaps, lookupJustDial, findVerifiedWebsite, findVerifiedWebsiteViaPlaces, reverseGeocode } from "@/lib/scraping/directory";
 import { config } from "@/lib/config";
+import { cleanPhone, isWhatsAppCapable } from "@/lib/phone";
 import {
   isJunkEmail,
   normalizeEmail,
@@ -298,8 +299,13 @@ export async function runLeadOrganizer(institutionId: number): Promise<void> {
 
       const finalEmail = rankAdmissionsEmail([...mailtoList, ...htmlList]);
 
-      const cleanPhone = [...found.phones].map((p) => p.replace(/[^\d+]/g, "")).find((p) => /^(\+91|91)?[6-9]\d{9}$/.test(p)) ?? null;
-      const phone = cleanPhone || inst.phone || null;
+      // A real phone only: `cleanPhone` rejects OSM placeholder junk like
+      // 9999999776, and prefers a WhatsApp-capable mobile when several exist.
+      const candidates = [...found.phones, inst.phone].filter(Boolean) as string[];
+      const phone =
+        candidates.map(cleanPhone).find((p) => p && isWhatsAppCapable(p)) ??
+        candidates.map(cleanPhone).find((p) => p) ??
+        null;
 
       // Only a proven site may be stored. Keeping an unproven URL around is what
       // let a wrong domain masquerade as a school's site on the next run.
@@ -322,7 +328,7 @@ updateInstitution(institutionId, {
         email: finalEmail,
         admissions_email: finalEmail,
         phone,
-        whatsapp_available: phone ? 1 : 0,
+        whatsapp_available: isWhatsAppCapable(phone) ? 1 : 0,
         website: finalSite,
         site_verified: siteVerified ? 1 : 0,
         site_match_reason: siteReason,
